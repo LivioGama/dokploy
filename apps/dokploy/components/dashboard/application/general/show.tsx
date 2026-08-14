@@ -3,7 +3,6 @@ import {
 	CheckCircle2,
 	Hammer,
 	RefreshCcw,
-	Rocket,
 	Terminal,
 } from "lucide-react";
 import { useRouter } from "next/router";
@@ -45,8 +44,6 @@ export const ShowGeneralApplication = ({ applicationId }: Props) => {
 	const { mutateAsync: stop, isPending: isStopping } =
 		api.application.stop.useMutation();
 
-	const { mutateAsync: deploy } = api.application.deploy.useMutation();
-
 	const { mutateAsync: reload, isPending: isReloading } =
 		api.application.reload.useMutation();
 
@@ -60,51 +57,6 @@ export const ShowGeneralApplication = ({ applicationId }: Props) => {
 				</CardHeader>
 				<CardContent className="grid grid-cols-2 lg:flex lg:flex-row lg:flex-wrap gap-4">
 					<TooltipProvider delayDuration={0} disableHoverableContent={false}>
-						{canDeploy && (
-							<DialogAction
-								title="Deploy Application"
-								description="Are you sure you want to deploy this application?"
-								type="default"
-								onClick={async () => {
-									await deploy({
-										applicationId: applicationId,
-									})
-										.then(() => {
-											toast.success("Application deployed successfully");
-											refetch();
-											router.push(
-												`/dashboard/project/${data?.environment.projectId}/environment/${data?.environmentId}/services/application/${applicationId}?tab=deployments`,
-											);
-										})
-										.catch(() => {
-											toast.error("Error deploying application");
-										});
-								}}
-							>
-								<Button
-									variant="default"
-									isLoading={data?.applicationStatus === "running"}
-									className="flex items-center gap-1.5 group focus-visible:ring-2 focus-visible:ring-offset-2"
-								>
-									<Tooltip>
-										<TooltipTrigger asChild>
-											<div className="flex items-center">
-												<Rocket className="size-4 mr-1" />
-												Deploy
-											</div>
-										</TooltipTrigger>
-										<TooltipPrimitive.Portal>
-											<TooltipContent sideOffset={5} className="z-60">
-												<p>
-													Downloads the source code and performs a complete
-													build
-												</p>
-											</TooltipContent>
-										</TooltipPrimitive.Portal>
-									</Tooltip>
-								</Button>
-							</DialogAction>
-						)}
 						{canDeploy && (
 							<DialogAction
 								title="Reload Application"
