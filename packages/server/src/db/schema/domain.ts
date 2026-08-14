@@ -29,7 +29,9 @@ export const domains = pgTable("domain", {
 		.primaryKey()
 		.$defaultFn(() => nanoid()),
 	host: text("host").notNull(),
-	https: boolean("https").notNull().default(false),
+	// New domains should be secure as soon as Traefik receives their router.
+	// Users can still opt out explicitly for internal or HTTP-only services.
+	https: boolean("https").notNull().default(true),
 	port: integer("port").default(3000),
 	customEntrypoint: text("customEntrypoint"),
 	path: text("path").default("/"),
@@ -51,7 +53,9 @@ export const domains = pgTable("domain", {
 		(): AnyPgColumn => previewDeployments.previewDeploymentId,
 		{ onDelete: "cascade" },
 	),
-	certificateType: certificateType("certificateType").notNull().default("none"),
+	certificateType: certificateType("certificateType")
+		.notNull()
+		.default("letsencrypt"),
 	internalPath: text("internalPath").default("/"),
 	stripPath: boolean("stripPath").notNull().default(false),
 	middlewares: text("middlewares").array().default(sql`ARRAY[]::text[]`),

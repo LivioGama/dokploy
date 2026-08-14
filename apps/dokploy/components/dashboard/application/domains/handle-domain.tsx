@@ -218,8 +218,8 @@ export const AddDomain = ({ id, type, domainId = "", children }: Props) => {
 			port: undefined,
 			useCustomEntrypoint: false,
 			customEntrypoint: undefined,
-			https: false,
-			certificateType: undefined,
+			https: true,
+			certificateType: "letsencrypt",
 			customCertResolver: undefined,
 			serviceName: undefined,
 			domainType: type,
@@ -263,8 +263,8 @@ export const AddDomain = ({ id, type, domainId = "", children }: Props) => {
 				port: undefined,
 				useCustomEntrypoint: false,
 				customEntrypoint: undefined,
-				https: false,
-				certificateType: undefined,
+				https: true,
+				certificateType: "letsencrypt",
 				customCertResolver: undefined,
 				domainType: type,
 				middlewares: [],
@@ -556,9 +556,13 @@ export const AddDomain = ({ id, type, domainId = "", children }: Props) => {
 																		appName: application?.appName || "",
 																		serverId: application?.serverId || "",
 																	})
-																		.then((domain) => {
-																			field.onChange(domain);
-																		})
+											.then((domain) => {
+												field.onChange(domain);
+												// sslip.io is HTTP-only, so don't leave the automatic
+												// Let's Encrypt default selected for generated hosts.
+												form.setValue("https", false);
+												form.setValue("certificateType", undefined);
+											})
 																		.catch((err) => {
 																			toast.error(err.message);
 																		});
