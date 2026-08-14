@@ -1,4 +1,4 @@
-import { Ban, CheckCircle2, RefreshCcw, Rocket, Terminal } from "lucide-react";
+import { Ban, CheckCircle2, RefreshCcw, Terminal } from "lucide-react";
 import { useRouter } from "next/router";
 import { Tooltip as TooltipPrimitive } from "radix-ui";
 import { toast } from "sonner";
@@ -29,7 +29,6 @@ export const ComposeActions = ({ composeId }: Props) => {
 		{ enabled: !!composeId },
 	);
 	const { mutateAsync: update } = api.compose.update.useMutation();
-	const { mutateAsync: deploy } = api.compose.deploy.useMutation();
 	const { mutateAsync: redeploy } = api.compose.redeploy.useMutation();
 	const { mutateAsync: start, isPending: isStarting } =
 		api.compose.start.useMutation();
@@ -38,50 +37,6 @@ export const ComposeActions = ({ composeId }: Props) => {
 	return (
 		<div className="flex flex-row gap-4 w-full flex-wrap ">
 			<TooltipProvider delayDuration={0} disableHoverableContent={false}>
-				{canDeploy && (
-					<DialogAction
-						title="Deploy Compose"
-						description="Are you sure you want to deploy this compose?"
-						type="default"
-						onClick={async () => {
-							await deploy({
-								composeId: composeId,
-							})
-								.then(() => {
-									toast.success("Compose deployed successfully");
-									refetch();
-									router.push(
-										`/dashboard/project/${data?.environment.projectId}/environment/${data?.environmentId}/services/compose/${composeId}?tab=deployments`,
-									);
-								})
-								.catch(() => {
-									toast.error("Error deploying compose");
-								});
-						}}
-					>
-						<Button
-							variant="default"
-							isLoading={data?.composeStatus === "running"}
-							className="flex items-center gap-1.5 group focus-visible:ring-2 focus-visible:ring-offset-2"
-						>
-							<Tooltip>
-								<TooltipTrigger asChild>
-									<div className="flex items-center">
-										<Rocket className="size-4 mr-1" />
-										Deploy
-									</div>
-								</TooltipTrigger>
-								<TooltipPrimitive.Portal>
-									<TooltipContent sideOffset={5} className="z-60">
-										<p>
-											Downloads the source code and performs a complete build
-										</p>
-									</TooltipContent>
-								</TooltipPrimitive.Portal>
-							</Tooltip>
-						</Button>
-					</DialogAction>
-				)}
 				{canDeploy && (
 					<DialogAction
 						title="Rebuild Compose"

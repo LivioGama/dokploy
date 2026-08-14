@@ -1,7 +1,7 @@
 import { validateRequest } from "@dokploy/server/lib/auth";
 import { createServerSideHelpers } from "@trpc/react-query/server";
 import copy from "copy-to-clipboard";
-import { HelpCircle, ServerOff } from "lucide-react";
+import { HelpCircle, Rocket, ServerOff } from "lucide-react";
 import type {
 	GetServerSidePropsContext,
 	InferGetServerSidePropsType,
@@ -9,7 +9,7 @@ import type {
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { type ReactElement, useEffect, useState } from "react";
+import { type ReactElement, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import superjson from "superjson";
 import { ShowClusterSettings } from "@/components/dashboard/application/advanced/cluster/show-cluster-settings";
@@ -38,8 +38,10 @@ import { ContainerPaidMonitoring } from "@/components/dashboard/monitoring/paid/
 import { AssignNetworks } from "@/components/dashboard/networks/assign-networks";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { AdvanceBreadcrumb } from "@/components/shared/advance-breadcrumb";
+import { DialogAction } from "@/components/shared/dialog-action";
 import { StatusTooltip } from "@/components/shared/status-tooltip";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -86,7 +88,7 @@ const Service = (
 		}
 	}, [router.query.tab]);
 
-	const { data } = api.application.one.useQuery(
+	const { data, refetch } = api.application.one.useQuery(
 		{ applicationId },
 		{
 			refetchInterval: 5000,
@@ -97,6 +99,7 @@ const Service = (
 	const { data: serverIp } = api.settings.getIp.useQuery();
 	const { data: auth } = api.user.get.useQuery();
 	const { data: permissions } = api.user.getPermissions.useQuery();
+	const { mutateAsync: deploy } = api.application.deploy.useMutation();
 
 	const { data: environments } = api.environment.byProjectId.useQuery({
 		projectId: data?.environment?.project?.projectId || "",
@@ -108,6 +111,38 @@ const Service = (
 			name: env.name,
 			href: `/dashboard/project/${projectId}/environment/${env.environmentId}`,
 		})) || [];
+
+	const deployApplication = useCallback(async () => {
+		if (!permissions?.deployment.create) return;
+
+		try {
+			await deploy({ applicationId });
+			toast.success("Application deployed successfully");
+			refetch();
+			router.push(
+				`/dashboard/project/${data?.environment.projectId}/environment/${data?.environmentId}/services/application/${applicationId}?tab=deployments`,
+			);
+		} catch {
+			toast.error("Error deploying application");
+		}
+	}, [applicationId, data?.environment, deploy, permissions?.deployment.create, refetch, router]);
+
+	useEffect(() => {
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (
+				event.ctrlKey &&
+				!event.repeat &&
+				event.key.toLowerCase() === "r" &&
+				permissions?.deployment.create
+			) {
+				event.preventDefault();
+				deployApplication();
+			}
+		};
+
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, [deployApplication, permissions?.deployment.create]);
 
 	return (
 		<div className="pb-10">
@@ -191,6 +226,22 @@ const Service = (
 								</div>
 
 								<div className="flex flex-row gap-2 justify-end">
+									{permissions?.deployment.create && (
+										<DialogAction
+											title="Deploy Application"
+											description="Are you sure you want to deploy this application?"
+											type="default"
+											onClick={deployApplication}
+										>
+											<Button
+												isLoading={data?.applicationStatus === "running"}
+												className="flex items-center gap-1.5"
+											>
+												<Rocket className="size-4" />
+												Deploy
+											</Button>
+										</DialogAction>
+									)}
 									{permissions?.service.create && (
 										<UpdateApplication applicationId={applicationId} />
 									)}

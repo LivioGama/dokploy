@@ -1,7 +1,7 @@
 import { validateRequest } from "@dokploy/server/lib/auth";
 import { createServerSideHelpers } from "@trpc/react-query/server";
 import copy from "copy-to-clipboard";
-import { HelpCircle, ServerOff } from "lucide-react";
+import { HelpCircle, Rocket, ServerOff } from "lucide-react";
 import type {
 	GetServerSidePropsContext,
 	InferGetServerSidePropsType,
@@ -9,7 +9,7 @@ import type {
 import Head from "next/head";
 import Link from "next/link";
 import { useRouter } from "next/router";
-import { type ReactElement, useEffect, useState } from "react";
+import { type ReactElement, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import superjson from "superjson";
 import { ShowImport } from "@/components/dashboard/application/advanced/import/show-import";
@@ -35,8 +35,10 @@ import { ComposePaidMonitoring } from "@/components/dashboard/monitoring/paid/co
 import { AssignComposeNetworks } from "@/components/dashboard/networks/assign-compose-networks";
 import { DashboardLayout } from "@/components/layouts/dashboard-layout";
 import { AdvanceBreadcrumb } from "@/components/shared/advance-breadcrumb";
+import { DialogAction } from "@/components/shared/dialog-action";
 import { StatusTooltip } from "@/components/shared/status-tooltip";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
 	Card,
 	CardContent,
@@ -82,10 +84,11 @@ const Service = (
 		}
 	}, [router.query.tab]);
 
-	const { data } = api.compose.one.useQuery({ composeId });
+	const { data, refetch } = api.compose.one.useQuery({ composeId });
 
 	const { data: auth } = api.user.get.useQuery();
 	const { data: permissions } = api.user.getPermissions.useQuery();
+	const { mutateAsync: deploy } = api.compose.deploy.useMutation();
 	const { data: isCloud } = api.settings.isCloud.useQuery();
 	const { data: serverIp } = api.settings.getIp.useQuery();
 	const { data: environments } = api.environment.byProjectId.useQuery({
@@ -98,6 +101,38 @@ const Service = (
 			name: env.name,
 			href: `/dashboard/project/${projectId}/environment/${env.environmentId}`,
 		})) || [];
+
+	const deployCompose = useCallback(async () => {
+		if (!permissions?.deployment.create) return;
+
+		try {
+			await deploy({ composeId });
+			toast.success("Compose deployed successfully");
+			refetch();
+			router.push(
+				`/dashboard/project/${data?.environment.projectId}/environment/${data?.environmentId}/services/compose/${composeId}?tab=deployments`,
+			);
+		} catch {
+			toast.error("Error deploying compose");
+		}
+	}, [composeId, data?.environment, deploy, permissions?.deployment.create, refetch, router]);
+
+	useEffect(() => {
+		const handleKeyDown = (event: KeyboardEvent) => {
+			if (
+				event.ctrlKey &&
+				!event.repeat &&
+				event.key.toLowerCase() === "r" &&
+				permissions?.deployment.create
+			) {
+				event.preventDefault();
+				deployCompose();
+			}
+		};
+
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, [deployCompose, permissions?.deployment.create]);
 
 	return (
 		<div className="pb-10">
@@ -180,6 +215,22 @@ const Service = (
 										)}
 									</div>
 									<div className="flex flex-row gap-2 justify-end">
+										{permissions?.deployment.create && (
+											<DialogAction
+												title="Deploy Compose"
+												description="Are you sure you want to deploy this compose?"
+												type="default"
+												onClick={deployCompose}
+											>
+												<Button
+													isLoading={data?.composeStatus === "running"}
+													className="flex items-center gap-1.5"
+												>
+													<Rocket className="size-4" />
+													Deploy
+												</Button>
+											</DialogAction>
+										)}
 										{permissions?.service.create && (
 											<UpdateCompose composeId={composeId} />
 										)}
